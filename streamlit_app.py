@@ -55,11 +55,19 @@ ingredients_list = st.multiselect(
 
 # Convert list to string and prepare SQL
 if ingredients_list:
-
     ingredients_string = ""
 
     for fruit_chosen in ingredients_list:
         ingredients_string += fruit_chosen + " "
+
+        smoothiefroot_response = requests.get(
+            "https://my.smoothiefroot.com/api/fruit/watermelon"
+        )
+
+        sf_df = st.dataframe(
+            data=smoothiefroot_response.json(),
+            use_container_width=True
+        )
 
     # Create INSERT statement
     my_insert_stmt = """insert into smoothies.public.orders(ingredients, name_on_order)
@@ -68,29 +76,10 @@ if ingredients_list:
     # Submit button
     time_to_insert = st.button("Submit Order")
 
-    # Insert order into Snowflake
     if time_to_insert:
-
         session.sql(my_insert_stmt).collect()
 
         st.success(
             "Your Smoothie is ordered, " + name_on_order + "!",
             icon="✅"
         )
-
-# ---------------------------------------------------------
-# SmoothieFroot API
-# ---------------------------------------------------------
-
-smoothiefroot_response = requests.get(
-    "https://my.smoothiefroot.com/api/fruit/watermelon"
-)
-
-# Display API response
-st.text(smoothiefroot_response.json())
-
-# Put API JSON into a dataframe
-sf_df = st.dataframe(
-    data=smoothiefroot_response.json(),
-    use_container_width=True
-)
