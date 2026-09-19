@@ -1,7 +1,7 @@
 # Import python packages
 import streamlit as st
 from snowflake.snowpark.functions import col
-from cryptography.hazmat.primitives import serialization
+import requests
 
 # Write directly to the app
 st.title(":cup_with_straw: Customize Your Smoothie! :cup_with_straw:")
@@ -15,35 +15,14 @@ name_on_order = st.text_input("Name on Smoothie:")
 
 st.write("The name on your Smoothie will be:", name_on_order)
 
-# Load private key from Streamlit Secrets
-private_key = serialization.load_pem_private_key(
-    st.secrets["connections"]["snowflake"]["SNOWFLAKE_PRIVATE_KEY"].encode(),
-    password=None
-)
-
-# Convert private key to DER format
-private_key_der = private_key.private_bytes(
-    encoding=serialization.Encoding.DER,
-    format=serialization.PrivateFormat.PKCS8,
-    encryption_algorithm=serialization.NoEncryption()
-)
-
 # Get Snowflake session
-cnx = st.connection(
-    "snowflake",
-    authenticator="SNOWFLAKE_JWT",
-    private_key=private_key_der
-)
-
+cnx = st.connection("snowflake")
 session = cnx.session()
 
 # Get fruit options from Snowflake table
 my_dataframe = session.table(
     "smoothies.public.fruit_options"
 ).select(col("FRUIT_NAME"))
-
-# Keep dataframe hidden
-# st.dataframe(data=my_dataframe, use_container_width=True)
 
 # Choose ingredients
 ingredients_list = st.multiselect(
@@ -54,7 +33,6 @@ ingredients_list = st.multiselect(
 
 # Convert list to string and prepare SQL
 if ingredients_list:
-
     ingredients_string = ""
 
     for fruit_chosen in ingredients_list:
@@ -75,3 +53,14 @@ if ingredients_list:
             "Your Smoothie is ordered, " + name_on_order + "!",
             icon="✅"
         )
+
+# Get SmoothieFroot information
+smoothiefroot_response = requests.get(
+    "https://my.smoothiefroot.com/api/fruit/watermelon"
+)
+
+# Display API response as a dataframe
+sf_df = st.dataframe(
+    data=smoothiefroot_response.json(),
+    use_container_width=True
+)
