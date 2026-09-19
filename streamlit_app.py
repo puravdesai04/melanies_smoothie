@@ -53,15 +53,18 @@ ingredients_list = st.multiselect(
     max_selections=5
 )
 
-# Convert list to string and prepare SQL
+# Convert list to string and get nutrition information
 if ingredients_list:
+
     ingredients_string = ""
 
     for fruit_chosen in ingredients_list:
         ingredients_string += fruit_chosen + " "
 
+        st.subheader(fruit_chosen + " Nutrition Information")
+
         smoothiefroot_response = requests.get(
-            "https://my.smoothiefroot.com/api/fruit/watermelon"
+            "https://my.smoothiefroot.com/api/fruit/" + fruit_chosen
         )
 
         sf_df = st.dataframe(
