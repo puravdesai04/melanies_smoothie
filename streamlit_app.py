@@ -1,6 +1,7 @@
 # Import python packages
 import streamlit as st
 from snowflake.snowpark.functions import col
+from cryptography.hazmat.primitives import serialization
 
 # Write directly to the app
 st.title(":cup_with_straw: Customize Your Smoothie! :cup_with_straw:")
@@ -14,8 +15,26 @@ name_on_order = st.text_input("Name on Smoothie:")
 
 st.write("The name on your Smoothie will be:", name_on_order)
 
+# Load private key from Streamlit Secrets
+private_key = serialization.load_pem_private_key(
+    st.secrets["connections"]["snowflake"]["SNOWFLAKE_PRIVATE_KEY"].encode(),
+    password=None
+)
+
+# Convert private key to DER format
+private_key_der = private_key.private_bytes(
+    encoding=serialization.Encoding.DER,
+    format=serialization.PrivateFormat.PKCS8,
+    encryption_algorithm=serialization.NoEncryption()
+)
+
 # Get Snowflake session
-cnx = st.connection("snowflake")
+cnx = st.connection(
+    "snowflake",
+    authenticator="SNOWFLAKE_JWT",
+    private_key=private_key_der
+)
+
 session = cnx.session()
 
 # Get fruit options from Snowflake table
@@ -29,15 +48,17 @@ my_dataframe = session.table(
 # Choose ingredients
 ingredients_list = st.multiselect(
     "Choose up to 5 ingredients:",
-    my_dataframe,max_selections=5
+    my_dataframe,
+    max_selections=5
 )
 
 # Convert list to string and prepare SQL
 if ingredients_list:
-    ingredients_string = ''
+
+    ingredients_string = ""
 
     for fruit_chosen in ingredients_list:
-        ingredients_string += fruit_chosen + ' '
+        ingredients_string += fruit_chosen + " "
 
     # Create INSERT statement
     my_insert_stmt = """ insert into smoothies.public.orders(ingredients, name_on_order)
@@ -49,7 +70,8 @@ if ingredients_list:
     # Insert order into Snowflake
     if time_to_insert:
         session.sql(my_insert_stmt).collect()
+
         st.success(
-    "Your Smoothie is ordered, " + name_on_order + "!",
-    icon="✅"
-)
+            "Your Smoothie is ordered, " + name_on_order + "!",
+            icon="✅"
+        )
